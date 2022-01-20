@@ -1,0 +1,243 @@
+---
+title: "ADA 442 HomeWork"
+author: "Furkan"
+date: "11/8/2021"
+output:
+  html_document:
+    toc: yes
+    df_print: paged
+  pdf_document:
+    number_sections: yes
+    toc: yes
+subtitle: 'Homework Number 1: Linear Regression'
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+# Introduction
+
+The ultimate purpose of this research is to find a relation between 'Income' and other predictor values in the data set 'Credit'.
+'Income' has used as response value. 'Rating', 'Balance', 'Limit' have used as predictor values.
+
+In Addition, comparison between Multiple Linear Regression Model and Simple Linear Regression Model over statistical facts has been made.
+
+
+# Methodology
+Since data set that chosen contains quantitative variables mainly, Linear Regression and Multiple Linear Regression have been used to create models. 
+
+_Skeleton Formula that has been used for Simple Linear Regression :_  Y ~ B0 + B1x + ϵ
+_Skeleton Formula that has been used for Multiple Linear Regression :_   Y ~ B0 + B1x1 + B2x2 + B3x3 + ϵ
+
+At the evaluation phase; 
+_R-squared_, _Adjusted R-squared_, _Residual Standard Error_, _p-value_, _F-statistics_ values and _compare_performance()_ method has been used. 
+
+# Data Set
+```{r dataSetIntro}
+library(ISLR2)
+data("Credit")
+set.seed(73745) # for reproducible results
+```
+- I have used credit card balance data which contains information of 400 customers from ISLR2 library of R.
+
+- Credit data frame has consisted of 11 variables which are 'Income', 'Limit', 'Rating', 'Cards', 'Age', 'Education', 'Own', 'Student', 'Married', 'Region', and 'Balance'.
+
+- There are 7 quantitative and 4 qualitative data on set.
+
+
+# Explaratory Data analysis
+
+_Superficial Sight of Data, Summary and Plot :_
+```{r dataSetAnalysis}
+head(Credit)
+summary(Credit)
+
+plot(Credit[, c("Rating", "Income")])
+```
+
+# Model Fit
+
+At the beginning, data Set has been spitted for testing and observation purposes. 
+
+```{r splitData}
+sample.size <- floor(0.80 * nrow(Credit)) # %80 for training, %20 for testing
+train.index <- sample(seq_len(nrow(Credit)), size = sample.size)
+train <- Credit[train.index, ]
+test <- Credit[-train.index, ]
+
+```
+
+Superficial inference and relation between 'Rating' and 'Income' can be seen as correlation matrix. 
+_Correlation Matrix :_
+```{r}
+cor(Credit[, c("Rating", "Income")])
+```
+
+
+
+## _Applying Linear Regression :_
+
+```{r linearRegression}
+lm.fit = lm(Rating ~ Income, data = train) 
+summary(lm.fit) 
+```
+
+_Regression Linear Equation :_ Rating = 195.8918 + 3.5530*Income
+_For every increase in Income, the model predicts a increase of 3.5530 in Rating._
+
+
+```{r }
+par(mfrow = c(2,2))
+plot(lm.fit)
+```
+
+_Residuals versus Fits plot :_
+The residuals did not located randomly around the 0 line. Relationship is not reasonably linear.In addition,  variances of the error terms are not equal.
+
+_Normal Q-Q plot :_
+Overall the residuals do not look to have a just normal distribution but fat tailed. There can be assumption as data is too peaked in middle and deviate from the straight line, its center follows a straight line.
+
+_Scale-Location plot :_
+The residuals begin to spread wider at the beginning. However, The red line is roughly horizontal across the plot.Assumption of homoscedasticity is satisfied for a given regression model. So, the spread of the residuals is roughly equal.
+
+_Residuals vs Leverage plot :_
+Some of the observations falls outside of the red dashed lines. This indicates that it is an influential point.If we removed those observation from our data set and fit the regression model again, the coefficients of the model would change significantly.
+
+
+## _Obtaining Confidence Interval :_
+_Coefficients of 95% (2.5% + 2.5% + 95%) confidence interval :_
+```{r}
+confint(lm.fit)
+```
+
+
+## _Applying Multiple Linear Regression :_
+```{r}
+plot(Credit[, c("Income", "Balance", "Limit", "Rating")])
+lm2.fit = lm(Rating ~ Income + Balance + Limit, data = train)
+summary(lm2.fit)
+```
+_p-values of Coefficients :_
+
+- Income         0.01047 *  
+- Balance        0.00153 ** 
+- Limit          < 2e-16 ***
+
+Since, if the predictors are meaningful, p-values of them must be smaller than 0.05. So, we can say that 'Limit', 'Balance' and 'Income' and 'Rating' have association with 'Rating'. Also, their relation levels have showed with stars.
+
+# Evaluate Model Performance
+## _Comparison between Predicted Values and Test Data  :_
+
+_Has been made via Linear Regression :_ 
+```{r}
+predictedIncome <- predict(lm.fit, test)
+par(mfrow = c(1,2))
+plot(test$Rating, predictedIncome)
+plot(test$Rating,test$Income)
+
+actuals_preds <- data.frame(cbind(actuals=test$Income, predicteds=predictedIncome))  # make actuals_predicteds dataframe.
+correlation_accuracy <- cor(actuals_preds)  
+head(actuals_preds)
+
+```
+
+_Has been made via Multiple Linear Regression :_ 
+```{r}
+predictedIncome2 <- predict(lm2.fit, test)
+par(mfrow = c(1,2))
+plot(test$Rating, predictedIncome2)
+plot(test$Rating,test$Income)
+
+actuals_preds2 <- data.frame(cbind(actuals2=test$Income, predicteds2=predictedIncome2))  # make actuals_predicteds dataframe.
+correlation_accuracy2 <- cor(actuals_preds2) 
+head(actuals_preds2)
+```
+
+We can clearly see that using either Multiple Linear Regression Model or Linear Regression Model is not a good way to make prediction. However, the only defective component might not be models itself solely but data set. We can try with more satisfying training set which includes more entities or variables.  
+
+Also, the most significant values to identify if a model well-explained are R^2 and adjusted R^2 values. R^2 values should be near 1. 
+_Linear Regression :_ 
+
+- Multiple R-squared:  0.6123, Adjusted R-squared:  0.6111
+
+_Multiple Linear Regression :_ 
+
+- Multiple R-squared:  0.9938, Adjusted R-squared:  0.9937 
+
+As seen above, Multiple LR Model can explain 99% of data. As a matter of fact, Multiple LR Model is better than Linear Regression Model. However, having such a high value of R^2 can be interpreted as over fitting. We might use validation to be more precise.
+
+In addition, smallest residual standard error shows how well the model fits the data. Also, median should not be far from zero, and the minimum and maximum should be roughly equal in absolute value. 
+
+_Linear Regression :_
+
+-   Min       1Q   Median       3Q      Max 
+- -171.783  -80.674    0.792   77.261  168.930 
+
+_Multiple Linear Regression :_ 
+
+-   Min      1Q  Median      3Q     Max 
+- -36.802  -8.210  -1.001   8.323  28.215 
+
+Despite, median of Linear Regression smaller than Multiple Linear Regression, Multiple Linear Regression offers more stable max/min values. As a result, Multiple LR Model fits better.
+
+
+Moreover, higher F-Statistic value is better because F-statistics are measures of goodness of fit in terms of errors.
+
+_Linear Regression :_
+
+-   Min       1Q   Median       3Q      Max 
+- F-statistic: 502.2 on 1 and 318 DF
+
+_Multiple Linear Regression :_ 
+
+- F-statistic: 1.677e+04 on 3 and 316 DF
+
+So, Multiple LR better here too.
+
+
+Lastly, A standard way to test if the predictors are not meaningful is looking if the p-values smaller than 0.05.
+
+_Linear Regression :_
+
+- p-value: < 2.2e-16
+
+_Multiple Linear Regression :_ 
+
+- p-value: < 2.2e-16
+
+Both of the models are meaningful.
+
+
+```{r performance}
+
+library(performance)
+
+compare_performance(lm.fit, lm2.fit, rank = TRUE)
+```
+As Final, Comparison of Model Performance Indices show us ultimate model that we can rely on.
+
+
+
+# Conclusions 
+
+- Despite, statistical models seems to fit well, plots and performance measures which derived via test values have not seen good.
+
+- Using Multiple Linear Regression is a more proper way to make prediction when we look statistical values and indicators.
+
+- Based on acceptance of Linear Regression Models are not perfect, they can be used for shallow inferences because predictions will not be perfect but will stay within limits. 
+
+
+# References 
+
+- Lecture Slides
+- https://online.stat.psu.edu/stat462/node/117/#:~:text=When%20conducting%20a%20residual%20analysis,unequal%20error%20variances%2C%20and%20outliers.
+- https://towardsdatascience.com/q-q-plots-explained-5aa8495426c0
+- https://www.statology.org/residuals-vs-leverage-plot/
+- https://www.datacamp.com/community/tutorials/linear-regression-R
+- https://towardsdatascience.com/back-to-basics-linear-regression-in-r-3ffe4900482b
+- http://www.sthda.com/english/articles/40-regression-analysis/167-simple-linear-regression-in-r/
+- https://www.statology.org/scale-location-plot/
+- https://www.statology.org/residuals-vs-leverage-plot/
+- https://www.machinelearningplus.com/machine-learning/complete-introduction-linear-regression-r/

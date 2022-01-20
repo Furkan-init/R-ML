@@ -1,0 +1,213 @@
+---
+title: "ADA 442 HomeWork"
+author: "Furkan"
+date: "11/23/2021"
+output:
+  pdf_document:
+    number_sections: yes
+    toc: yes
+  html_document:
+    toc: yes
+    df_print: paged
+subtitle: 'Homework 3: Ridge vs LASSO Regression'
+---
+
+```{r setup, include=FALSE}
+# You do not need to change anything here in general
+knitr::opts_chunk$set(echo = TRUE)
+# Note that echo is TRUE so we will see both the code and results in final pdf file!
+```
+
+
+# Introduction
+
+- The ultimate purpose of this research is to compare which Regression Model is better for prediction on 'College' Data set.
+
+# Methodology
+
+_Skeleton Formula that has been used for Simple Linear Regression :_  Y ~ B0 + B1x + epsilon
+
+_Loss function Formula that has been used for Ridge Regression :_ OLS + alpha * summation (squared coefficient values)
+
+_Loss function Formula that has been used for LASSO Regression :_ OLS + alpha * summation (absolute values of the magnitude of the coefficients)
+
+- RMSE and R^2 comparison has been performed over different Regression Models by using formulas given above.
+
+# Data Set
+```{r data }
+library(ISLR2)
+set.seed(73745) # for reproducible results
+data(College)
+```
+
+- I have used U.S. News and World Report's College Data which contains 777 observations from 'ISLR2' library.
+
+- College data frame has consisted of 18 variables.
+
+
+# Explaratory Data analysis
+_Brief information about the data set can be seen below_
+```{r descriptives}
+head(College)
+summary(College)
+```
+
+
+# Model Fit
+- Data set has been divided into two part as 80% and 20%.
+```{r splitData}
+index = sample(1:nrow(College), 0.8*nrow(College))  # %80 for training, %20 for testing
+train = College[index,] # Create the training data 
+test = College[-index,] # Create the test data
+dim(train)
+dim(test)
+```
+
+- Superficial inference and relation between 'Accept' and 'Apps' can be seen as correlation matrix. 
+_Correlation Matrix :_
+```{r}
+cor(College[, c("Accept", "Apps")])
+```
+
+
+## _Applying Linear Regression _
+```{r linearRegression}
+lm.fit = lm(Accept ~ Apps + Enroll + Outstate, data = train) 
+summary(lm.fit) 
+```
+- Since, if the predictors are meaningful, p-values of them must be smaller than 0.05. 'Apps' variable can be predictor.
+
+_Regression Linear Equation :_ Accept = 199.19774 + 0.61091*Apps
+_For every increase in Accept, the model predicts a increase of 0.61091 in Apps._
+
+- The most significant values to identify if a model well-explained are R^2 and adjusted R^2 values. R^2 values should be near 1. 
+
+### Evaluate Linear Regression Model Performance
+
+```{r evaluateLinearRegression}
+predictedAccept <- predict(lm.fit, test)
+par(mfrow = c(1,2))
+
+
+actuals_preds <- data.frame(cbind(actuals=test$Accept, predicteds=predictedAccept))  # make actuals_predicteds dataframe.
+correlation_accuracy <- cor(actuals_preds)  
+head(actuals_preds)
+```
+
+## _Applying Rigde Regression _
+
+- Loss function = OLS + alpha * summation (squared coefficient values)
+```{r ridgeRegression}
+library(glmnet)
+
+x = train
+y_train = train$Accept
+
+x_test = data.matrix(test)
+y_test = test$Accept
+
+lambdas <- 10^seq(2, -3, by = -.1)
+ridge_reg = glmnet(x, y_train, nlambda = 25, alpha = 0, family = 'gaussian', lambda = lambdas)
+
+summary(ridge_reg)
+```
+
+- Ridge Regression model been run several times for different values of lambda. 
+- When alpha=0, Ridge Model is fit and if alpha=1, a lasso model is fit.
+
+```{r automatedRidgeRegression}
+x_mtrx = data.matrix(train)
+cv_ridge <- cv.glmnet(x_mtrx, y_train, alpha = 0, lambda = lambdas)
+optimal_lambda <- cv_ridge$lambda.min
+optimal_lambda
+```
+
+### Evaluate Ridge Model Performance
+
+```{r automatedRidgeRegressionPrediction}
+eval_results <- function(true, predicted, df) {
+  # Sum of Squared Error
+  SSE <- sum((predicted - true)^2)
+  # Sum of Squared Total
+  SST <- sum((true - mean(true))^2)
+  R_square <- 1 - SSE / SST
+  RMSE = sqrt(SSE/nrow(df))
+
+  
+  # Model performance metrics
+data.frame(
+  RMSE = RMSE,
+  Rsquare = R_square
+)
+  
+}
+
+# Prediction and evaluation on train data
+predictions_train <- predict(ridge_reg, s = optimal_lambda, newx = x_mtrx)
+
+# Prediction and evaluation on test data
+predictions_test <- predict(ridge_reg, s = optimal_lambda, newx = x_test)
+
+eval_results(y_train, predictions_train, train)
+eval_results(y_test, predictions_test, test)
+```
+
+-  There is an improvement in the performance compared with linear regression model.
+
+
+## _Applying Lasso Regression _
+
+- Loss function = OLS + alpha * summation (absolute values of the magnitude of the coefficients)
+- When alpha=0, Ridge Model is fit and if alpha=1, a lasso model is fit.
+
+```{r LassoRegression}
+lambdas <- 10^seq(2, -3, by = -.1)
+
+# Setting alpha = 1 implements lasso regression
+lasso_reg <- cv.glmnet(x_mtrx, y_train, alpha = 1, lambda = lambdas, standardize = TRUE, nfolds = 5)
+
+# Best 
+lambda_best <- lasso_reg$lambda.min 
+lambda_best
+```
+
+### Evaluate LASSO Model Performance
+```{r LassoRegressionPrediction}
+lasso_model <- glmnet(x_mtrx, y_train, alpha = 1, lambda = lambda_best, standardize = TRUE)
+
+predictions_train <- predict(lasso_model, s = lambda_best, newx = x_mtrx)
+eval_results(y_train, predictions_train, train)
+
+predictions_test <- predict(lasso_model, s = lambda_best, newx = x_test)
+eval_results(y_test, predictions_test, test)
+```
+
+
+# Conclusions 
+
+- Ridge regression shrinks the regression coefficients, so that variables, with minor contribution to the outcome, have their coefficients close to zero.
+
+- Lasso stands for Least Absolute Shrinkage and Selection Operator. It shrinks the regression coefficients toward zero by penalizing the regression model with a penalty term called L1-norm, which is the sum of the absolute coefficients.
+
+- We know that the most ideal result would be an RMSE value of zero and R-squared value of 1.
+
+- To conclude that, 
+  R^2 of Linear Regression Model :  0.9315
+  
+  RMSE of Ridge Model : 0.3763321
+  R^2 of Ridge Model :  1
+  
+  RMSE of LASSO Model : 4.091901
+  R^2 of LASSO Model : 0.9999981
+  
+  So, The first salient value is R^2 of Linear Regression Model because it is lowest and worst value in respect to accuracy.
+  Also, R^2 value of Ridge Model which is 1 has the best prediction accuracy.  
+
+# References 
+
+- Lecture Slides
+- https://towardsdatascience.com/understanding-confusion-matrix-a9ad42dcfd62
+- https://www.pluralsight.com/guides/linear-lasso-and-ridge-regression-with-r
+- http://www.sthda.com/english/articles/37-model-selection-essentials-in-r/153-penalized-regression-essentials-ridge-lasso-elastic-net/
+
+

@@ -1,0 +1,149 @@
+---
+title: "ADA 442 HomeWork"
+author: "Furkan"
+date: "03/12/2021"
+output:
+   pdf_document:
+    number_sections: yes
+    toc: yes
+subtitle: 'Homework 2: Logistic Regression'
+---
+
+```{r setup, include=FALSE}
+# You do not need to change anything here in general
+knitr::opts_chunk$set(echo = TRUE)
+# Note that echo is TRUE so we will see both the code and results in final pdf file!
+```
+
+
+# Introduction
+
+- The ultimate purpose of this research is to find a relation between 'Bl.cromatin' and 'Class' in the data set 'BreastCancer'.
+
+- In Addition, comparison between different Logistic Regression Model over statistical facts has been made.
+
+
+# Methodology
+
+- Since data set that chosen contains binary categorical variables , Logistic Regression has been used to create model. 
+
+# Data Set
+```{r data }
+library(mlbench)
+set.seed(73745) # for reproducible results
+data(BreastCancer)
+```
+
+- I have used Breast Cancer data which contains 699 observations from mlbench library.
+
+- Breast Cancer data frame has consisted of 11 variables and 1 target class.
+
+- Since ID is irrelevant and Bare.nuclei has some empty values, have not been used.
+
+# Explaratory Data analysis
+_Brief information about the data set_
+```{r descriptives}
+head(BreastCancer)
+summary(BreastCancer)
+sum(is.na(BreastCancer$Bl.cromatin))
+```
+- As seen above, there is no missing values under cell thickness variable.
+
+
+# Model Fit
+- Since data is numeric, there is no extra effort has needed.
+```{r}
+str(BreastCancer$Class)
+```
+
+- Data set has been divided into two part as 80% and 20%.
+```{r splitData}
+sample.size <- floor(0.80 * nrow(BreastCancer)) # %80 for training, %20 for testing
+train.index <- sample(seq_len(nrow(BreastCancer)), size = sample.size)
+train <- BreastCancer[train.index, ]
+test <- BreastCancer[-train.index, ]
+```
+
+##_Logistic Regression Model Fitting_
+```{r modeling}
+lm_BlCromatin <- glm(Class ~ Bl.cromatin, data = train, family = "binomial")
+summary(lm_BlCromatin)
+```
+
+- Smallest residual small error shows how well the model fits the data. Also, median should not be far from zero, and the minimum and maximum should be roughly equal in absolute value. 
+
+- As seen above, Bl.cromatin3, Bl.cromatin4, Bl.cromatin5, Bl.cromatin6 and Bl.cromatin7 values are significant.
+
+```{r predict}
+predicted <- ifelse(predict(lm_BlCromatin, newdata = test, type = "response") > 0.5, "malignant", "benign")
+predicted <- as.factor(predicted)
+```
+
+## Evaluate Model Performance
+
+```{r compare prediction}
+# Gather x variable, y variable and predicted y variable in the same data frame
+compareDataFrame <- data.frame(Bl.cromatin = test$Bl.cromatin, Class = test$Class, PredictedClass = predicted)
+
+library(caret)
+confusionMatrix(compareDataFrame$Class, compareDataFrame$PredictedClass)
+
+```
+
+- What we can obtain from Accuracy is the ratio of all correct predictions out of Total Predictions. We have fairly high rate which is good.
+
+- What we can obtain from Sensitivity is the ratio of True Positive out of Actual positive. We have fairly high rate which is good.
+
+- What we can obtain from Specificity is the ratio of True Negative out of Actual Negative. We have fairly high rate which is good.
+
+- What we can obtain from Precision is the ratio of True Positive out of Predicted Positive. We have fairly high rate which is good.
+
+
+## _Multiple Logistic Regression Model Fitting_
+
+- For the logistic regression case, 'Bl.cromatin' and 'Cl.thickness' has chosen as variable for x.
+
+```{r multiple regression modeling}
+ml_ClThicknessBlCromatin <- glm(Class ~ Bl.cromatin + Cl.thickness, data = train, family = binomial)
+summary(ml_ClThicknessBlCromatin)
+```
+
+```{r multiple regression predict}
+predictedClass2 <- ifelse(predict(ml_ClThicknessBlCromatin, newdata = test, type = "response") > 0.5, "malignant", "benign")
+predictedClass2 <- as.factor(predictedClass2)
+```
+
+```{r multiple regerssion compare prediction}
+compareDataFrame2 <- data.frame(Bl.cromatin = test$Bl.cromatin, Cl.thickness = test$Cl.thickness, Class = test$Class, PredictedClass2 = predictedClass2)
+
+confusionMatrix(compareDataFrame2$Class, compareDataFrame2$PredictedClass2)
+```
+
+## _Evaluate Multiple Logistic Regression Model Performance_
+
+-We can use F1-score to determine which model has better performance.
+_F1-Score = (2 * precision * recall) / (precision + recall)_
+
+- _For Logistic regression:_
+```{r LR F-score}
+F1LR <- (2 * 0.9375  * 0.9474) / (0.9375 + 0.9474)
+F1LR
+```
+
+- _For Multiple Logistic regression:_
+```{r MLR F-score}
+F1MLR <- (2 * 0.9583 * 0.9485) / (0.9583 + 0.9485)
+F1MLR
+```
+
+# Conclusions 
+
+To conclude that, we can clearly see that if we have a consisted data, applying Multiple Regression is better than applying Logistic regression solely when we evaluate F-scores.
+
+# References 
+
+- Week 3 Lecture Slides
+- https://towardsdatascience.com/understanding-confusion-matrix-a9ad42dcfd62
+- http://www.sthda.com/english/articles/36-classification-methods-essentials/151-logistic-regression-essentials-in-r/
+
+

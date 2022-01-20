@@ -1,0 +1,181 @@
+---
+title: "ADA 442 HomeWork"
+author: "Furkan"
+date: "1/6/2022"
+output:
+  pdf_document:
+    number_sections: yes
+    toc: yes
+  html_document:
+    toc: yes
+    df_print: paged
+subtitle: 'Homework 4: Tree Based Models'
+---
+
+```{r setup, include=FALSE}
+# You do not need to change anything here in general
+knitr::opts_chunk$set(echo = TRUE)
+# Note that echo is TRUE so we will see both the code and results in final pdf file!
+```
+
+
+# Introduction
+
+- The ultimate purpose of this research is to observe how Pruned and Unpruned Tree's behave on 'OJ' Data set.
+
+- Also, Finding optimal tree size and its impact can be other achievement.
+
+# Methodology
+- To predict data, 'tree' library has used.
+- To find error rate, (TP + TN)/Size formula has used mentally. -even when algorithm has been used-
+- To observe relation between variables or values, confusion matrices and plots have been used.
+
+# Data Set
+```{r data }
+library(ISLR2)
+set.seed(73745) # for reproducible results
+data("OJ")
+```
+
+- I have used Orange Juice Data which contains 1070 purchases where the customer either purchased Citrus Hill or Minute Maid Orange Juice from 'ISLR2' library.
+
+- OJ data frame has consisted of 1070 observations on the following 18 variables.
+
+
+# Explaratory Data analysis
+_Brief information about the data set can be seen below_
+```{r descriptives}
+head(OJ)
+summary(OJ)
+```
+
+
+# Model Fit
+- Data set has been divided into two part as 80% and 20%.
+```{r splitData}
+index = sample(1:nrow(OJ), 0.8*nrow(OJ))  # %80 for training, %20 for testing
+train = OJ[index,] # Create the training data 
+test = OJ[-index,] # Create the test data
+dim(train)
+dim(test)
+```
+
+
+## _Fit the Tree to the training data and Obtain Summary Statistics_
+```{r fitTree}
+library(tree)
+tree_model <- tree(Purchase ~ ., train)
+summary(tree_model)
+```
+
+- The number of terminal nodes is 9.
+- The Missclassification error rate is 16.12%
+- There are 5 variables that used in tree construction which are "LoyalCH", "SalePriceMM", "SpecialCH", "ListPriceDiff" and "SalePriceCH".  
+
+## _Demonstration of the Tree and interpretation of results_
+```{r demonstrationTree}
+plot(tree_model)
+text(tree_model, pretty = 0, cex = 0.9)
+```
+- We can say that "LoyalCH" is the most significant variable because first and second decisions will be made by using that variable.
+
+## _Confusion Matrix of the Tree_
+```{r confusionMatrixOfTree}
+test_pred <- predict(tree_model, test, type = "class")
+table(test_pred, test_actual = test$Purchase)
+```
+
+- As seen confusion matrix above, we see that 114 of Citrus Hill were correctly classified and 53 of Minute Maid were correctly classified. 
+
+- _So, our prediction accuracy is:_
+```{r accuracyAndErrorRate}
+pred_accuracy <- (114+53)/214
+pred_accuracy
+# So the error rate is simply (1 - pred_accuracy)
+1 - mean(test_pred == test$Purchase)
+```
+
+## _Optimal Tree Size_
+
+- If we use 5 folds and 10 different values of alpha we’ll build 50 different trees. For each value of alpha we’ll split the data into 5 folds and build 5 trees, using 4 folds to train and the left out fold to get a mean squared prediction error. 
+
+- The ultimate aim is to find the value with the lowest average MSE.
+
+```{r optimalTreeSize}
+cv_tree_model <- cv.tree(tree_model, FUN = prune.misclass)
+cv_tree_model
+```
+
+- k = nagative Inf is allowing a full, unpruned tree. Where k=159 which is the the highest value in our results corresponds to a single node tree.
+
+- We make our selection based on "dev" because we’ve changed the pruning function, this is actually the number of misclassified values. Lower is better and the minimum dev value is 151. That corresponds to a tree with 9 or 5 terminal nodes and alpha of -Inf or 0.0.
+
+
+## Producing a plot with tree size on the x-axis and cross-validated classification error rate on the y-axis
+
+```{r plotTree}
+CV_Error <- (cv_tree_model$dev / nrow(train))
+plot(CV_Error, cv_tree_model$size, type = "b",
+      xlab = "Error Rate",
+     ylab = "Tree Size",
+     main = "Tree Size vs Error Rate")
+```
+- Tree has already has 9 terminal nodes so 5 terminal nodes will be used at following steps.
+
+- However, 9 or 5 can be chosen as optimal tree size.
+
+## _Producing Pruned Tree with optimal tree size_
+```{r prunedTree}
+pruned_tree_model <- prune.tree(tree_model, best = 5)
+summary(pruned_tree_model)
+```
+
+```{r confusionMatrixOfPrunedTree}
+test_pred_prunned <- predict(pruned_tree_model, test, type = "class")
+table(test_pred_prunned, test_actual = test$Purchase)
+```
+
+- _So, our pruned prediction accuracy is:_
+```{r accuracyAndErrorRatePrunedTree}
+pred_accuracy_prunned <- mean(test_pred_prunned == test$Purchase)
+pred_accuracy_prunned
+# So the error rate is simply (1 - pred_accuracy)
+1 - mean(test_pred_prunned == test$Purchase)
+```
+
+# Overall Comparison  
+
+- _Training Error Rates between Pruned and Unpruned Trees:_
+```{r accuracyAndErrorRateOverallComparisonTraining}
+# Unpruned Tree :
+mean(predict(tree_model, type = "class") != train$Purchase)
+
+# Pruned Tree :
+mean(predict(pruned_tree_model, type = "class") != train$Purchase)
+```
+
+- _Test Error Rates between Pruned and Unpruned Trees:_
+```{r accuracyAndErrorRateOverallComparisonTest}
+# Unpruned Tree :
+mean(predict(tree_model, type = "class", newdata = test) != test$Purchase)
+
+# Pruned Tree :
+mean(predict(pruned_tree_model, type = "class", newdata = test) != test$Purchase)
+```
+
+# Conclusion 
+- _Error Rate of Unpruned Tree :_  0.2196262
+- _Error Rate of Pruned Tree :_  0.2149533
+
+- There is an improvement in respect to Error Rates. However, As stated above, there were no difference between dev values for 9 terminal nodes and 5 terminal nodes.
+
+-Improvement been considered improvement but using Unpruned Tree is enough for 'OJ' data set. Also, possibly there are better algorithms for prediction. So, other possibilities can be considered if data set is suitable.
+
+# References 
+
+- Lecture Slides
+- https://rstudio-pubs-static.s3.amazonaws.com/442284_82321e66af4e49d58adcd897e00bf495.html
+- https://chirag-sehra.medium.com/decision-trees-explained-easily-28f23241248
+- https://rpubs.com/miss_kris/795888
+
+
